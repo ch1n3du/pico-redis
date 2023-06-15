@@ -1,7 +1,8 @@
 // Uncomment this block to pass the first stage
 use std::net::TcpListener;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     println!("Logs from your program will appear here!");
 
@@ -9,13 +10,14 @@ fn main() {
     //
     let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
 
-    for stream in listener.incoming() {
-        match stream {
-            Ok(_stream) => {
-                println!("accepted new connection");
+    loop {
+        let incoming = listener.accept();
+        match incoming {
+            Ok((_stream, addr)) => {
+                println!("Accepted new connection from {addr}");
             }
             Err(e) => {
-                println!("error: {}", e);
+                println!("Error: {}", e);
             }
         }
     }
