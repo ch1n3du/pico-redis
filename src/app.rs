@@ -121,7 +121,7 @@ impl App {
         let resp = match response_receiver.await {
             Ok(Ok(request_result)) => request_result,
             Ok(Err(execution_error)) => RESP::Error(format!(
-                "Error execting command: {execution_error:?}" // ! Implement debug for error
+                "Error: {execution_error:?}" // ! Implement debug for error
             )),
             Err(receiver_error) => {
                 RESP::Error(format!("Error receiving results: {receiver_error}"))

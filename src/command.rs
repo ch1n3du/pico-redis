@@ -1,7 +1,7 @@
 use bytes::Bytes;
 
 use crate::{
-    cache::Cache,
+    db::Db,
     error::{Error, Result},
     resp::RESP,
 };
@@ -9,10 +9,13 @@ use crate::{
 #[derive(Debug)]
 pub enum Command {
     Ping { msg: Option<Bytes> },
+    Echo { msg: RESP },
+    Set { key: String, value: Bytes },
+    Get { key: String },
 }
 
 impl Command {
-    pub async fn execute_cmd(self, _cache: &mut Cache) -> RESP {
+    pub async fn execute_cmd(self, db: &mut Db) -> RESP {
         use Command::*;
         match self {
             Ping { msg } => {
@@ -20,6 +23,21 @@ impl Command {
                     RESP::Bulk(msg)
                 } else {
                     RESP::Simple("PONG".to_string())
+                }
+            }
+            Echo { msg } => msg,
+            Set { key, value } => {
+                if let Some(previous_entry) = db.set(key, value) {
+                    RESP::Bulk(previous_entry)
+                } else {
+                    RESP::Simple("OK".to_string())
+                }
+            }
+            Get { key } => {
+                if let Some(data) = db.get(&key) {
+                    RESP::Bulk(data)
+                } else {
+                    RESP::Null
                 }
             }
         }
@@ -34,16 +52,51 @@ impl TryFrom<RESP> for Command {
             if args.is_empty() {
                 return Err(Error::Msg("Command array is empty".to_string()));
             }
-            let arg0 = extract_simplestring(&args[0])?;
+            let arg0 = extract_string(&args[0])?;
 
             match arg0.to_uppercase().as_str() {
                 "PING" => {
                     let msg = if let Some(msg) = args.get(1) {
-                        Some(extract_bulkstring(msg)?)
+                        Some(extract_string_as_bytes(msg)?)
                     } else {
                         None
                     };
                     return Ok(Command::Ping { msg });
+                }
+                "ECHO" => {
+                    if let Some(resp) = args.get(1) {
+                        if resp.is_string() {
+                            return Ok(Command::Echo { msg: resp.clone() });
+                        } else {
+                            return Err(Error::Msg("Echo command only takes strings".to_string()));
+                        }
+                    } else {
+                        return Err(Error::Msg("Echo command takes 1 argument".to_string()));
+                    }
+                }
+                "SET" => {
+                    let key = if let Some(raw_key) = args.get(1) {
+                        extract_string(&raw_key)?
+                    } else {
+                        return Err(Error::Msg("Set command requires a key".to_string()));
+                    };
+
+                    let value = if let Some(raw_key) = args.get(2) {
+                        extract_string_as_bytes(&raw_key)?
+                    } else {
+                        return Err(Error::Msg("Set command requires a key".to_string()));
+                    };
+
+                    Ok(Command::Set { key, value })
+                }
+                "GET" => {
+                    let key = if let Some(raw_key) = args.get(1) {
+                        extract_string(&raw_key)?
+                    } else {
+                        return Err(Error::Msg("Set command requires a key".to_string()));
+                    };
+
+                    Ok(Command::Get { key })
                 }
                 _ => return Err(Error::Msg("Unknown or unsupported command".to_string())),
             }
@@ -53,15 +106,16 @@ impl TryFrom<RESP> for Command {
     }
 }
 
-fn extract_simplestring(val: &RESP) -> Result<String> {
+fn extract_string(val: &RESP) -> Result<String> {
     match val {
         RESP::Bulk(body) => Ok(body.into_iter().map(|b| *b as char).collect()),
+        RESP::Simple(body) => Ok(body.clone()),
         _ => Err(Error::Msg(
-            "Expected command argument to be a simple string".to_string(),
+            "Expected command argument to be a string".to_string(),
         )),
     }
 }
-fn extract_bulkstring(val: &RESP) -> Result<Bytes> {
+fn extract_string_as_bytes(val: &RESP) -> Result<Bytes> {
     match val {
         RESP::Bulk(body) => Ok(body.clone()),
         _ => Err(Error::Msg(

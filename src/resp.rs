@@ -5,7 +5,7 @@ use crate::error::{Error, Result};
 // use std::io::Write;
 // use bytes::Buf;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RESP {
     Simple(String),
     Integer(i64),
@@ -94,6 +94,14 @@ impl RESP {
             _ => {
                 return Err(Error::InvalidRequestData);
             }
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        use RESP::*;
+        match self {
+            Simple(_) | Bulk(_) => true,
+            _ => false,
         }
     }
 }
