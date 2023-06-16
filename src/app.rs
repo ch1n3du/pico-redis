@@ -65,9 +65,9 @@ impl App {
             let send_request_ = request_sender.clone();
             println!("Just cloned channel");
             tokio::spawn(async move {
-                println!("Spawned a new handle connection instance");
                 let connection = Connection::new(stream);
-                Self::handle_connection(connection, send_request_)
+                println!("Spawned a new handle connection instance");
+                Self::handle_connection(connection, send_request_).await
             });
         }
     }
