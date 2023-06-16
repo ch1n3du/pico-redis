@@ -80,12 +80,14 @@ impl App {
         // ! Handle better
         let raw_command = connection.read_frame().await?.unwrap();
         let command = Command::try_from(raw_command)?;
+        println!("COMMAND: {command:?}");
 
         let (response_sender, mut response_receiver) = oneshot::channel();
         let request = ExecutionRequest {
             command,
             response_sender,
         };
+        println!("Request is being sent");
         let response_status = request_sender.send(request).await;
         println!("Just sent an execution request");
 
