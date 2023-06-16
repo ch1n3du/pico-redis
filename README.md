@@ -22,4 +22,4 @@ $ cargo run
 
 ## Possible Future stuff
 
-There's a lot of room for optimizations with stuff like [LSM-trees](https://en.wikipedia.org/wiki/Log-structured_merge-tree) but I don't yet have the time to learn how to implement them.
+There's a lot of room for optimizations with stuff like [LSM-trees](https://en.wikipedia.org/wiki/Log-structured_merge-tree) but I don't yet have the time to [learn](https://skyzh.github.io/mini-lsm/) how to implement them.
