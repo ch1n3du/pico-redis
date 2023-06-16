@@ -12,7 +12,7 @@ pub enum Command {
 }
 
 impl Command {
-    pub async fn execute_cmd(self, cache: &mut Cache) -> RESP {
+    pub async fn execute_cmd(self, _cache: &mut Cache) -> RESP {
         use Command::*;
         match self {
             Ping { msg } => {

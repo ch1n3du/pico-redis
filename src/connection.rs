@@ -1,4 +1,4 @@
-use bytes::{buf, Buf, BytesMut};
+use bytes::{Buf, BytesMut};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufWriter},
     net::TcpStream,

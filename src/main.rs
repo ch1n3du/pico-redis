@@ -1,6 +1,3 @@
-// Uncomment this block to pass the first stage
-use std::net::TcpListener;
-
 use redis_starter_rust::{app::App, error::Error};
 
 #[tokio::main]

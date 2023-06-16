@@ -1,5 +1,3 @@
-use std::{any, os::windows::raw};
-
 use tokio::{
     net::TcpListener,
     sync::{mpsc, oneshot},
@@ -10,7 +8,7 @@ use crate::{
     command::Command,
     connection::Connection,
     error::{Error, Result},
-    resp::{self, RESP},
+    resp::RESP,
 };
 
 pub struct App {
