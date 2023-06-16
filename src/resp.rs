@@ -20,7 +20,7 @@ impl RESP {
     pub fn parse(src: &[u8]) -> Result<(RESP, usize)> {
         println!("SRC: {:?}", bytes_to_string(src));
         if src.is_empty() {
-            return Err(Error::Msg("Empty message".to_string()));
+            return Err(Error::IncompleteRequestData);
         }
         match src[0] {
             b'+' => {
