@@ -1,3 +1,5 @@
+use tokio::time::Duration;
+
 use bytes::Bytes;
 
 use crate::{
@@ -8,10 +10,20 @@ use crate::{
 
 #[derive(Debug)]
 pub enum Command {
-    Ping { msg: Option<Bytes> },
-    Echo { msg: RESP },
-    Set { key: String, value: Bytes },
-    Get { key: String },
+    Ping {
+        msg: Option<Bytes>,
+    },
+    Echo {
+        msg: RESP,
+    },
+    Set {
+        key: String,
+        value: Bytes,
+        ttl: Option<u64>,
+    },
+    Get {
+        key: String,
+    },
 }
 
 impl Command {
@@ -26,8 +38,8 @@ impl Command {
                 }
             }
             Echo { msg } => msg,
-            Set { key, value } => {
-                if let Some(previous_entry) = db.set(key, value) {
+            Set { key, value, ttl } => {
+                if let Some(previous_entry) = db.set(key, value, ttl) {
                     RESP::Bulk(previous_entry)
                 } else {
                     RESP::Simple("OK".to_string())
@@ -87,7 +99,33 @@ impl TryFrom<RESP> for Command {
                         return Err(Error::Msg("Set command requires a key".to_string()));
                     };
 
-                    Ok(Command::Set { key, value })
+                    let ttl: Option<u64> = if let Some(raw_ttl) = args.get(3) {
+                        let time_unit = extract_string(&raw_ttl)?;
+
+                        let duration: u64 = if let Some(raw_ttl) = args.get(3) {
+                            extract_string(&raw_ttl)?.parse::<u64>().map_err(|_| {
+                                Error::Msg("Expiration duration must be a number".to_string())
+                            })?
+                        } else {
+                            return Err(Error::Msg("Set command requires a key".to_string()));
+                        };
+
+                        match time_unit.as_str() {
+                            // Time units in seconds
+                            "EX" => Some(duration * 1000),
+                            // Time units in milliseconds
+                            "PX" => Some(duration),
+                            _ => {
+                                return Err(Error::Msg(format!(
+                                    "Set command option '{time_unit}' is not supported"
+                                )))
+                            }
+                        }
+                    } else {
+                        None
+                    };
+
+                    Ok(Command::Set { key, value, ttl })
                 }
                 "GET" => {
                     let key = if let Some(raw_key) = args.get(1) {

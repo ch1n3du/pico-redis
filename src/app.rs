@@ -4,9 +4,9 @@ use tokio::{
 };
 
 use crate::{
-    cache::Cache,
     command::Command,
     connection::Connection,
+    db::Db,
     error::{Error, Result},
     resp::RESP,
 };
@@ -49,10 +49,10 @@ impl App {
         // Listens for incoming `ExecutionRequest`s from the `request_receiver`,
         // executes them and send the result back to the task that sent the `ExecutionRequest`.
         tokio::spawn(async move {
-            let mut cache = Cache::new();
+            let mut db = Db::new();
 
             while let Some(request) = request_receiver.recv().await {
-                let result = request.command.execute_cmd(&mut cache).await;
+                let result = request.command.execute_cmd(&mut db).await;
                 // Send the
                 request.response_sender.send(Ok(result)).unwrap();
             }
