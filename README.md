@@ -1,35 +1,25 @@
-[![progress-banner](https://app.codecrafters.io/progress/redis/3a4b96f9-a01c-4b77-b197-8e84aeab8533)](https://app.codecrafters.io/users/Ch1n3du)
+# pico-redis
 
-This is a starting point for Rust solutions to the
-["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
+A tiny reimplentation of [Redis](https://redis.io/)
 
-In this challenge, you'll build a toy Redis clone that's capable of handling
-basic commands like `PING`, `SET` and `GET`. Along the way we'll learn about
-event loops, the Redis protocol and more.
+>**Note:** This is a very naive implementation, the database is just a non-sharded hashmap.
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Running the code
 
-# Passing the first stage
-
-The entry point for your Redis implementation is in `src/main.rs`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+Make sure you have [Rust installed](https://rustup.rs/) and run:
 
 ```sh
-git add .
-git commit -m "pass 1st stage" # any msg
-git push origin master
+$ cargo run
+  ...
 ```
 
-That's all!
+## Supported Commands
 
-# Stage 2 & beyond
+- [PING](https://redis.io/commands/ping/)
+- [ECHO](https://redis.io/commands/echo/)
+- [SET](https://redis.io/commands/set/)
+- [GET](https://redis.io/commands/get/)
 
-Note: This section is for stages 2 and beyond.
+## Possible Future stuff
 
-1. Ensure you have `cargo (1.54)` installed locally
-1. Run `./spawn_redis_server.sh` to run your Redis server, which is implemented
-   in `src/main.rs`. This command compiles your Rust project, so it might be
-   slow the first time you run it. Subsequent runs will be fast.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+There's a lot of room for optimizations with stuff like [LSM-trees](https://en.wikipedia.org/wiki/Log-structured_merge-tree) but I don't yet have the time to learn how to implement them.
