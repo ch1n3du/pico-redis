@@ -18,6 +18,10 @@ pub enum RESP {
 impl RESP {
     pub const CRLF: [u8; 2] = *b"\r\n";
     pub fn parse(src: &[u8]) -> Result<(RESP, usize)> {
+        println!("SRC: {:?}", bytes_to_string(src));
+        if src.is_empty() {
+            return Err(Error::Msg("Empty message".to_string()));
+        }
         match src[0] {
             b'+' => {
                 let crlf_start_index = find_crlf(&src).ok_or(Error::IncompleteRequestData)?;
