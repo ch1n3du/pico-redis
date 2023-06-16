@@ -1,6 +1,7 @@
 # pico-redis
 
-A tiny reimplentation of [Redis](https://redis.io/)
+A tiny reimplentation of [Redis](https://redis.io/).
+My main goal with this was to learn more about async programming in Rust using [Tokio](https://tokio.rs).
 
 >**Note:** This is a very naive implementation, the database is just a non-sharded hashmap.
 
