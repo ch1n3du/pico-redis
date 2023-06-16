@@ -60,10 +60,12 @@ impl App {
 
         loop {
             let (stream, addr) = self.listener.accept().await.map_err(Error::Io)?;
-            println!("Accepted a request from {addr}");
+            println!("Accepted a request from '{addr}'");
 
             let send_request_ = request_sender.clone();
+            println!("Just cloned channel");
             tokio::spawn(async move {
+                println!("Spawned a new handle connection instance");
                 let connection = Connection::new(stream);
                 Self::handle_connection(connection, send_request_)
             });
@@ -85,6 +87,7 @@ impl App {
             response_sender,
         };
         let response_status = request_sender.send(request).await;
+        println!("Just sent an execution request");
 
         if response_status.is_err() {
             response_receiver.close();
