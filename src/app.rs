@@ -73,15 +73,35 @@ impl App {
     }
 
     /// Parses command from connection and send it to the Command Executor Task
+    /// Can handle multiple commands from one connection.
     async fn handle_connection(
         mut connection: Connection,
         request_sender: mpsc::Sender<ExecutionRequest>,
     ) -> Result<()> {
-        // ! Handle better
-        let raw_command = connection.read_frame().await?.unwrap();
-        let command = Command::try_from(raw_command)?;
-        println!("COMMAND: {command:?}");
+        'listen: loop {
+            // ! Handle better
+            let raw_command = match connection.read_frame().await {
+                // Peer closed connection.
+                Ok(Some(resp)) => resp,
+                Ok(None) => break 'listen,
+                Err(e) => {
+                    return Err(e);
+                }
+            };
+            let command = Command::try_from(raw_command)?;
+            println!("COMMAND: {command:?}");
 
+            let resp = Self::handle_command(command, request_sender.clone()).await;
+            connection.write_frame(&resp).await?;
+        }
+        Ok(())
+    }
+
+    /// Handles a single command from a connection.
+    async fn handle_command(
+        command: Command,
+        request_sender: mpsc::Sender<ExecutionRequest>,
+    ) -> RESP {
         let (response_sender, mut response_receiver) = oneshot::channel();
         let request = ExecutionRequest {
             command,
@@ -95,12 +115,10 @@ impl App {
             response_receiver.close();
             //? I don't get
             _ = response_receiver.try_recv();
-            let response = RESP::Error("Busy".to_string());
-            connection.write_frame(&response).await?;
-            return Ok(());
+            return RESP::Error("Error receiving results".to_string());
         }
 
-        let response_frame = match response_receiver.await {
+        let resp = match response_receiver.await {
             Ok(Ok(request_result)) => request_result,
             Ok(Err(execution_error)) => RESP::Error(format!(
                 "Error execting command: {execution_error:?}" // ! Implement debug for error
@@ -109,8 +127,7 @@ impl App {
                 RESP::Error(format!("Error receiving results: {receiver_error}"))
             }
         };
-        connection.write_frame(&response_frame).await?;
-
-        Ok(())
+        // Some(resp)
+        resp
     }
 }
