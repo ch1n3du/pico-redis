@@ -16,7 +16,7 @@ pub struct App {
 }
 
 #[derive(Debug)]
-struct ExecutionRequest {
+struct DbRequest {
     command: Command,
     response_sender: ResponseSender,
 }
@@ -38,51 +38,52 @@ impl App {
     }
 
     /// Listens for incoming requests and spawns new tasks to parse their commands
-    /// and send them to the Command Executor Task to executed.
+    /// and send them to the Database Task to executed.
     pub async fn run(&mut self) -> Result<()> {
-        let (request_sender, mut request_receiver): (
-            mpsc::Sender<ExecutionRequest>,
-            mpsc::Receiver<ExecutionRequest>,
+        let (db_request_sender, mut db_request_receiver): (
+            mpsc::Sender<DbRequest>,
+            mpsc::Receiver<DbRequest>,
         ) = mpsc::channel(256);
 
-        // Spawn the Command Executor Task
-        // Listens for incoming `ExecutionRequest`s from the `request_receiver`,
-        // executes them and send the result back to the task that sent the `ExecutionRequest`.
+        // Spawn the Database Task
+        // Listens for incoming `DbRequest`s from the `db_request_receiver`,
+        // executes them and send the result back to the task that sent the `DbRequest`.
         tokio::spawn(async move {
             let mut db = Db::new();
 
-            while let Some(request) = request_receiver.recv().await {
-                let result = request.command.execute_cmd(&mut db).await;
+            while let Some(db_request) = db_request_receiver.recv().await {
+                let result = db_request.command.execute_cmd(&mut db).await;
                 // Send the
-                request.response_sender.send(Ok(result)).unwrap();
+                db_request.response_sender.send(Ok(result)).unwrap();
             }
         });
 
+        // Listen to incoming connections and spawn a task to handle them
         loop {
             let (stream, addr) = self.listener.accept().await.map_err(Error::Io)?;
             println!("Accepted a request from '{addr}'");
 
-            let send_request_ = request_sender.clone();
+            let db_request_sender_ = db_request_sender.clone();
             println!("Just cloned channel");
             tokio::spawn(async move {
                 let connection = Connection::new(stream);
-                println!("Spawned a new handle connection instance");
-                Self::handle_connection(connection, send_request_).await
+                println!("Spawned a new handle connection task");
+                Self::handle_connection(connection, db_request_sender_).await
             });
         }
     }
 
-    /// Parses command from connection and send it to the Command Executor Task
+    /// Handles the database's interactions with a specific connection
+    /// Parses command from connection and send it to the Database Task
     /// Can handle multiple commands from one connection.
     async fn handle_connection(
         mut connection: Connection,
-        request_sender: mpsc::Sender<ExecutionRequest>,
+        db_request_sender: mpsc::Sender<DbRequest>,
     ) -> Result<()> {
         'listen: loop {
-            // ! Handle better
             let raw_command = match connection.read_frame().await {
-                // Peer closed connection.
                 Ok(Some(resp)) => resp,
+                // 'read_frame' returns `Ok(None)` if the peer closed connection.
                 Ok(None) => break 'listen,
                 Err(e) => {
                     return Err(e);
@@ -91,24 +92,21 @@ impl App {
             let command = Command::try_from(raw_command)?;
             println!("COMMAND: {command:?}");
 
-            let resp = Self::handle_command(command, request_sender.clone()).await;
-            connection.write_frame(&resp).await?;
+            let db_response: RESP = Self::handle_command(command, db_request_sender.clone()).await;
+            connection.write_frame(&db_response).await?;
         }
         Ok(())
     }
 
-    /// Handles a single command from a connection.
-    async fn handle_command(
-        command: Command,
-        request_sender: mpsc::Sender<ExecutionRequest>,
-    ) -> RESP {
+    /// Handles a single command received from a connection.
+    async fn handle_command(command: Command, db_request_sender: mpsc::Sender<DbRequest>) -> RESP {
         let (response_sender, mut response_receiver) = oneshot::channel();
-        let request = ExecutionRequest {
+        let db_request = DbRequest {
             command,
             response_sender,
         };
         println!("Request is being sent");
-        let response_status = request_sender.send(request).await;
+        let response_status = db_request_sender.send(db_request).await;
         println!("Just sent an execution request");
 
         if response_status.is_err() {
@@ -127,7 +125,6 @@ impl App {
                 RESP::Error(format!("Error receiving results: {receiver_error}"))
             }
         };
-        // Some(resp)
         resp
     }
 }
