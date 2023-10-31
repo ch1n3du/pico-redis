@@ -1,5 +1,7 @@
 # pico-redis
 
+![Terminal Demo](./assets/demo.png)
+
 A tiny reimplentation of [Redis](https://redis.io/).
 My main goal with this was to learn more about async programming in Rust using [Tokio](https://tokio.rs).
 [`src/app.rs`](./src/app.rs) contains most of the logic.
